@@ -5,15 +5,22 @@
 
 Suggest locations to open in Apple Maps or Google Maps.
 
-- [ ] Showcase image to be inserted here.
+<img width="70%" alt="Showcase" src="https://github.com/user-attachments/assets/46402f4a-bb01-4fa3-ba5f-b8880abf67d7"/>
 
 ## Usage
-- ((Do this)) via the keyword `xxx`.
-- Press the [hotkey](https://www.alfredapp.com/help/workflows/triggers/hotkey/)
-  to ((do this))
+Search for locations with the keyword `map`.
+- <kbd>⏎</kbd> open the location at the primary map provider.
+- <kbd>⌘⏎</kbd> open the location at the secondary map provider.
+- <kbd>⌥⏎</kbd> copy the URL of the primary map provider.
+- <kbd>⌃⏎</kbd> copy the address.
+- <kbd>⇧⏎</kbd> copy the coordinates.
 
 ## Installation
 [➡️ Download the latest release.](https://github.com/chrisgrieser/alfred-maps-suggest/releases/latest)
+
+## Credits
+Data by [OpenStreetMap](https://www.openstreetmap.org/) via [photon
+API](https://photon.komoot.io/).
 
 ## About the developer
 In my day job, I am a sociologist studying the social mechanisms underlying the
