@@ -1,0 +1,109 @@
+#!/usr/bin/env osascript -l JavaScript
+ObjC.import("stdlib");
+const app = Application.currentApplication();
+app.includeStandardAdditions = true;
+//──────────────────────────────────────────────────────────────────────────────
+
+/** @typedef {Object} GeoLocation
+ * @property {string} type - The type of the feature, e.g., "Feature".
+ * @property {GeoProperties} properties - Metadata about the feature.
+ * @property {{type: string, coordinates: number[]}} geometry - Geometric data of the feature.
+ */
+
+/** @typedef {Object} GeoProperties
+ * @property {string} osm_type - Type of OSM object (e.g., "R" for relation).
+ * @property {number} osm_id - OpenStreetMap ID.
+ * @property {string} osm_key - Main OSM category (e.g., "building").
+ * @property {string} osm_value - OSM-specific value (e.g., "train_station").
+ * @property {string} type - Type of object (e.g., "house").
+ * @property {string} postcode - Postal code.
+ * @property {string} countrycode - ISO country code.
+ * @property {string} name - Name of the feature.
+ * @property {string} country - Country name.
+ * @property {string} city - City name.
+ * @property {string} state
+ * @property {string} district - District name.
+ * @property {string} locality - Local area.
+ * @property {string} street - Street name.
+ * @property {string} housenumber
+ * @property {number[]} extent - Bounding box as [minLon, maxLat, maxLon, minLat].
+ */
+
+//───────────────────────────────────────────────────────────────────────────
+
+/** @param {string} url @return {string} */
+function httpRequest(url) {
+	// unique user-agent to make blocking less likely
+	const workflowName = $.getenv("alfred_workflow_name");
+	const version = $.getenv("alfred_workflow_version");
+	const userAgent = `Alfred ${workflowName}/${version}`;
+	return app.doShellScript(`curl --silent --user-agent "${userAgent}" "${url}"`);
+}
+
+//──────────────────────────────────────────────────────────────────────────────
+
+/** @type {Record<string, string>} */
+const mapProvider = {
+	"Google Maps": "http://google.com/maps?q=",
+	"Apple Maps": "maps://maps.apple.com?q=",
+};
+
+//──────────────────────────────────────────────────────────────────────────────
+
+/** @type {AlfredRun} */
+// biome-ignore lint/correctness/noUnusedVariables: Alfred run
+function run(argv) {
+	const query = (argv[0] || "").trim();
+	const mapProvider1 = $.getenv("map_provider_1");
+	const mapProvider2 = $.getenv("map_provider_2");
+	if (!query) return JSON.stringify({ items: [{ title: "Waiting for query…", valid: false }] });
+
+	// DOCS https://photon.komoot.io/
+	const apiUrl = "https://photon.komoot.io/api?q=" + encodeURIComponent(query);
+	console.log("api url:", apiUrl);
+	const response = httpRequest(apiUrl);
+	if (!response) return JSON.stringify({ items: [{ title: "Error: No results", valid: false }] });
+	const /** @type {GeoLocation[]} */ locations = JSON.parse(response).features;
+
+	/** @type {AlfredItem[]} */
+	const items = locations.map((loc) => {
+		const { name, country, state, city, district, locality, postcode, street, housenumber } =
+			loc.properties;
+		const title = name || street + " " + housenumber;
+		const address = [
+			name,
+			country,
+			state,
+			city,
+			district,
+			locality,
+			postcode,
+			((street || "") + " " + (housenumber || "")).trim(),
+		].filter(Boolean);
+
+		const addressStr = address.join(", ");
+		const addressDisplay = address.slice(1).join(", "); // skip name from display
+		const url2 = mapProvider[mapProvider2] + encodeURIComponent(addressStr);
+		const url1 = mapProvider[mapProvider1] + encodeURIComponent(addressStr);
+
+		// SIC osm coordinates are long/lat, even though mapping apps expect
+		// lat/long, thus needs to be reversed
+		const coordinates = loc.geometry.coordinates.reverse().join(",");
+
+		return {
+			title: title,
+			subtitle: addressDisplay,
+			arg: url1, // open at primary map provider
+			mods: {
+				cmd: { arg: url2 }, // open at secondary map provider
+				ctrl: { arg: addressStr }, // copy
+				shift: { arg: coordinates }, // copy
+			},
+
+			// only for debugging
+			variables: { address: addressStr, url1: url1, url2: url2, coordinates: coordinates },
+		};
+	});
+
+	return JSON.stringify({ items: items });
+}
