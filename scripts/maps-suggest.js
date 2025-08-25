@@ -113,6 +113,9 @@ function run(argv) {
 		title: `Search for "${query}"`,
 		subtitle: mapProvider1,
 		arg: mapProvider[mapProvider1] + encodeURIComponent(query),
+		mods: {
+			cmd: { arg: mapProvider[mapProvider2] + encodeURIComponent(query) },
+		},
 	});
 
 	return JSON.stringify({ items: items });
