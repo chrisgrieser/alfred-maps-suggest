@@ -44,7 +44,7 @@ function httpRequest(url) {
 
 /** @type {Record<string, string>} */
 const mapProvider = {
-	"Google Maps": "http://google.com/maps?q=",
+	"Google Maps": "https://www.google.com/maps?q=",
 	"Apple Maps": "maps://maps.apple.com?q=",
 };
 
