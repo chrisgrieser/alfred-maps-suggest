@@ -65,11 +65,13 @@ function run(argv) {
 	if (!response) return JSON.stringify({ items: [{ title: "Error: No results", valid: false }] });
 	const /** @type {GeoLocation[]} */ locations = JSON.parse(response).features;
 
+	/** @type {Record<string, boolean>} */
+	const usedAddresses = {};
+
 	/** @type {AlfredItem[]} */
-	const items = locations.map((loc) => {
+	const items = locations.reduce((/** @type {AlfredItem[]} */ acc, loc) => {
 		const { name, country, state, city, district, locality, postcode, street, housenumber } =
 			loc.properties;
-		const title = name || street + " " + housenumber;
 		const address = [
 			name,
 			country,
@@ -80,8 +82,13 @@ function run(argv) {
 			postcode,
 			((street || "") + " " + (housenumber || "")).trim(),
 		].filter(Boolean);
-
 		const addressStr = address.join(", ");
+
+		// prevent duplicate entries
+		if (usedAddresses[addressStr]) return acc;
+		usedAddresses[addressStr] = true;
+
+		const title = name || street + " " + housenumber;
 		const addressDisplay = address.slice(1).join(", "); // skip name from display
 		const mapProvider1Url = mapProvider[mapProvider1] + encodeURIComponent(addressStr);
 		const mapProvider2Url = mapProvider[mapProvider2] + encodeURIComponent(addressStr);
@@ -90,7 +97,8 @@ function run(argv) {
 		// lat/long, thus needs to be reversed
 		const coordinates = loc.geometry.coordinates.reverse().join(",");
 
-		return {
+		/** @type {AlfredItem} */
+		const alfredItem = {
 			title: title,
 			subtitle: addressDisplay,
 			arg: mapProvider1Url,
@@ -99,14 +107,17 @@ function run(argv) {
 				ctrl: { arg: addressStr }, // copy
 				shift: { arg: coordinates }, // copy
 			},
-			variables: { // only for debugging
+			variables: {
+				// only for debugging
 				address: addressStr,
 				url1: mapProvider1Url,
 				url2: mapProvider2Url,
 				coordinates: coordinates,
 			},
 		};
-	});
+		acc.push(alfredItem);
+		return acc;
+	}, []);
 
 	// manual search fallback
 	items.push({
